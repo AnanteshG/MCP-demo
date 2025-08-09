@@ -12,7 +12,16 @@ async function scrapeHeadlines(url, selector) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.replace("Bearer ", "").trim();
+
+  if (!token || token !== process.env.MCP_BEARER_TOKEN) {
+    return res.status(401).json({ error: "Invalid bearer token" });
+  }
 
   const newsSources = [
     { name: "BBC", url: "https://www.bbc.com/news", selector: "h3" },
