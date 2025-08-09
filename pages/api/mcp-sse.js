@@ -1,30 +1,53 @@
-// MCP Server Implementation following Model Context Protocol
+// MCP Server with Server-Sent Events for Puch AI compatibility
 export default async function handler(req, res) {
-  // Set CORS headers for all responses
+  // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With"
-  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Handle preflight requests
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // Handle GET request for server info/discovery
+  // Handle both HTTP POST and GET for SSE
   if (req.method === "GET") {
-    return res.status(200).json({
-      name: "News MCP Server",
-      version: "1.0.0",
-      description: "MCP server for fetching news headlines and user validation",
-      protocol: "mcp/1.0",
-      capabilities: ["tools"],
-      endpoints: {
-        mcp: "/api/mcp",
-      },
+    // Server-Sent Events endpoint for MCP connection
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    // Send initial connection message
+    res.write(
+      `data: ${JSON.stringify({
+        jsonrpc: "2.0",
+        method: "server/ready",
+        params: {
+          serverInfo: {
+            name: "News MCP Server",
+            version: "1.0.0",
+            description:
+              "MCP server for fetching news headlines and user validation",
+          },
+        },
+      })}\n\n`
+    );
+
+    // Keep connection alive
+    const keepAlive = setInterval(() => {
+      res.write(
+        `data: ${JSON.stringify({
+          jsonrpc: "2.0",
+          method: "ping",
+        })}\n\n`
+      );
+    }, 30000);
+
+    req.on("close", () => {
+      clearInterval(keepAlive);
     });
+
+    return;
   }
 
   if (req.method !== "POST") {
@@ -32,25 +55,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse JSON body
-    let body = req.body;
-    if (typeof body === "string") {
-      body = JSON.parse(body);
-    }
-
-    const { jsonrpc, method, params, id } = body;
-
-    // Validate JSON-RPC format
-    if (jsonrpc !== "2.0") {
-      return res.status(400).json({
-        jsonrpc: "2.0",
-        id: id || null,
-        error: {
-          code: -32600,
-          message: "Invalid Request - jsonrpc must be '2.0'",
-        },
-      });
-    }
+    const { method, params, id } = req.body;
 
     switch (method) {
       case "initialize":
@@ -65,7 +70,7 @@ export default async function handler(req, res) {
       default:
         return res.status(200).json({
           jsonrpc: "2.0",
-          id: id || null,
+          id: id,
           error: {
             code: -32601,
             message: "Method not found",
@@ -74,10 +79,9 @@ export default async function handler(req, res) {
         });
     }
   } catch (error) {
-    console.error("MCP Server Error:", error);
     return res.status(200).json({
       jsonrpc: "2.0",
-      id: req.body?.id || null,
+      id: req.body?.id,
       error: {
         code: -32603,
         message: "Internal error",
