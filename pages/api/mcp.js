@@ -124,18 +124,13 @@ function handleToolsList(req, res, params, id) {
       },
     },
     {
-      name: "getNews",
-      description: "Fetch top 5 headlines from major news sources",
+      name: "get_latest_news",
+      description:
+        "Fetch the latest news headlines from major news sources including BBC, CNN, NDTV, The Hindu, and Reuters",
       inputSchema: {
         type: "object",
-        properties: {
-          sources: {
-            type: "array",
-            items: { type: "string" },
-            description: "Optional array of news sources to fetch from",
-            default: ["BBC", "CNN", "NDTV", "The Hindu", "Reuters"],
-          },
-        },
+        properties: {},
+        additionalProperties: false,
       },
     },
   ];
@@ -158,6 +153,7 @@ async function handleToolCall(req, res, params, id) {
         return await handleValidateTool(req, res, toolArgs, id);
 
       case "getNews":
+      case "get_latest_news":
         return await handleGetNewsTool(req, res, toolArgs, id);
 
       default:
@@ -240,6 +236,19 @@ async function handleGetNewsTool(req, res, toolArgs, id) {
 
     const newsData = await response.json();
 
+    // Format the news data nicely for Puch AI
+    let newsText = "📰 **Latest News Headlines**\n\n";
+
+    Object.entries(newsData.news).forEach(([source, headlines]) => {
+      if (headlines && headlines.length > 0) {
+        newsText += `**${source}:**\n`;
+        headlines.slice(0, 3).forEach((headline, idx) => {
+          newsText += `${idx + 1}. ${headline}\n`;
+        });
+        newsText += "\n";
+      }
+    });
+
     return res.status(200).json({
       jsonrpc: "2.0",
       id: id,
@@ -247,7 +256,7 @@ async function handleGetNewsTool(req, res, toolArgs, id) {
         content: [
           {
             type: "text",
-            text: JSON.stringify(newsData, null, 2),
+            text: newsText,
           },
         ],
       },
