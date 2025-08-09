@@ -49,15 +49,19 @@ try {
 Write-Host "`n4. Testing with curl for Puch AI compatibility..." -ForegroundColor Yellow
 try {
     $curlResult = & curl.exe -X GET $baseUrl -w "%{http_code},%{time_total}" -s -o temp_response.json 2>$null
-    $httpCode = ($curlResult -split ',')[0]
-    $timeTotal = ($curlResult -split ',')[1]
-    
-    if ($httpCode -eq "200") {
-        Write-Host "✓ Curl test successful (HTTP $httpCode in ${timeTotal}s)" -ForegroundColor Green
-        $content = Get-Content temp_response.json | ConvertFrom-Json
-        Write-Host "Server accessible via curl: $($content.name)" -ForegroundColor White
+    if ($LASTEXITCODE -eq 0) {
+        $httpCode = ($curlResult -split ',')[0]
+        $timeTotal = ($curlResult -split ',')[1]
+        
+        if ($httpCode -eq "200") {
+            Write-Host "✓ Curl test successful (HTTP $httpCode in ${timeTotal}s)" -ForegroundColor Green
+            $content = Get-Content temp_response.json | ConvertFrom-Json
+            Write-Host "Server accessible via curl: $($content.name)" -ForegroundColor White
+        } else {
+            Write-Host "✗ Curl test failed with HTTP code: $httpCode" -ForegroundColor Red
+        }
     } else {
-        Write-Host "✗ Curl test failed with HTTP code: $httpCode" -ForegroundColor Red
+        Write-Host "✗ Curl command failed" -ForegroundColor Red
     }
     
     Remove-Item temp_response.json -ErrorAction SilentlyContinue
