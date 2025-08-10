@@ -134,6 +134,7 @@ This server is deployed on Vercel and accessible at:
 
 - **Production URL**: https://mcp-demo-gamma.vercel.app/api/mcp
 - **GitHub**: https://github.com/AnanteshG/MCP-demo
+- **Puch.ai**: https://puch.ai/mcp/CE1Xj6HLoC
 
 ## Protocol Compliance
 
